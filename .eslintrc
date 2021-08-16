@@ -1,0 +1,15 @@
+{
+  "ignorePatterns": ["dist/", "coverage/", "node_modules/"],
+  "extends": ["airbnb-typescript"],
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
+  "root": true,
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".json", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  }
+}
