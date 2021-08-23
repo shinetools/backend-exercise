@@ -1,4 +1,4 @@
-import consume from '../../src/consumer';
+import consume from '../../src/infrastructure/consumer';
 import * as useCases from '../../src/application/use-cases/store-transaction-use-case';
 
 const event = {
@@ -23,7 +23,7 @@ const event = {
   },
 };
 
-let spy;
+let spy: jest.SpyInstance;
 
 describe('consumer', () => {
   beforeEach(() => {

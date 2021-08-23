@@ -7,11 +7,11 @@ import {
 } from '../interfaces/transaction';
 
 export class Transaction {
+  transactionId: string;
+
   bankAccountId: string;
 
   userId: string;
-
-  transactionId: string;
 
   category: TransactionCategory;
 
@@ -38,9 +38,9 @@ export class Transaction {
   updatedAt: Date;
 
   constructor(
+    transactionId: string,
     bankAccountId: string,
     userId: string,
-    transactionId: string,
     category: TransactionCategory,
     title: string,
     description: string,

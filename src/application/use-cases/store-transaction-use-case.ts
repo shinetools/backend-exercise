@@ -1,6 +1,7 @@
 import { Transaction } from '../../domain/models/transaction';
 import type { TransactionsRepository } from '../../domain/repositories/transactions-repository';
 import { TransactionStorageError } from '../../domain/errors/transaction-storage-error';
+import logger from '../../infrastructure/utils/logger';
 
 interface StoreTransactionUseCaseInput {
   transaction: Transaction;
@@ -14,9 +15,14 @@ export async function storeTransactionUseCase(
   { transaction }: StoreTransactionUseCaseInput,
   { transactionsRepository }: StoreTransactionUseCaseDependencies,
 ): Promise<void | TransactionStorageError> {
-  const res = await transactionsRepository.storeTransaction(transaction);
+  logger.info('In storeTransactionUseCase(...)');
 
-  if (res instanceof TransactionStorageError) {
-    return res;
+  const transactionStorageResult =
+    await transactionsRepository.storeTransaction(transaction);
+
+  if (transactionStorageResult instanceof TransactionStorageError) {
+    logger.error('In storeTransactionUseCase(...)');
+
+    return transactionStorageResult;
   }
 }
