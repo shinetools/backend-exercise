@@ -3,7 +3,7 @@ import Chance from 'chance';
 
 const chance = Chance();
 
-const TRANSACTION_TYPES = ['PAYIN', 'PAYTOUT'];
+const TRANSACTION_TYPES = ['PAYIN', 'PAYOUT'];
 const TRANSACTION_CATEGORIES = [
   'DEFAULT',
   'BANKING',
