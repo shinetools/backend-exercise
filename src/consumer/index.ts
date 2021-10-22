@@ -1,7 +1,8 @@
 import logger from '../utils/logger';
 import getDatabase from '../utils/database'
 import { Database } from 'sqlite';
-interface Event {
+import { generateNextBalance } from '../balance/nextBalanceService';
+export interface Event {
   eventId: string;
   payload: any;
   retry: number;
@@ -22,12 +23,15 @@ const handle = async (event: Event) => {
   try {
     isValidTransaction(event)
     await getOrCreateTables(db)
-    logger.info('Event received', { event });
+    //logger.info('Event received', { event });
     const {payload} = event
     const {bankAccountId,userId,type,status,value, transactionId} = payload
     
     
     const table = getConcernedTable(status)
+    if (status !== 'VALIDATED') {
+      await generateNextBalance(payload,db)
+    }
     
     const currentBalance = await db.get(`SELECT balance FROM ${table} WHERE bankAccountId = ?`, bankAccountId)
     let result
@@ -43,6 +47,7 @@ const handle = async (event: Event) => {
   }
     return true;
   } catch (err) {
+    console.log(err)
     return false;
   }
 };
@@ -67,8 +72,8 @@ const getOrCreateTables = async (db: Database) => {
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
     await db.exec(`CREATE TABLE IF NOT EXISTS nextBalances (
-      bankAccountId TEXT PRIMARY KEY,
-      transactionId TEXT NOT NULL,
+      bankAccountId TEXT ,
+      transactionId TEXT NOT NULL PRIMARY KEY,
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
       // logger.info(`Database And Tables Ready`)
@@ -79,8 +84,6 @@ const getOrCreateTables = async (db: Database) => {
 }
 
 const isValidTransaction = (event: Event) => {
-  logger.info(event.payload.type)
-  logger.info(event.payload.status)
   if (event.payload.type === 'BAD_TYPE' || event.payload.status === 'BAD_STATUS') {
     logger.warn('invalid transaction')
     throw Error('invalid transaction')
