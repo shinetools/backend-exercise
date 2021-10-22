@@ -1,7 +1,7 @@
 import logger from '../utils/logger';
 import getDatabase from '../utils/database'
 import { Database } from 'sqlite';
-import { generateNextBalance, removeValidatedFromNextBalance } from '../balance/nextBalanceService';
+import { updateBalance } from '../balance/nextBalanceService';
 export interface Event {
   eventId: string;
   payload: any;
@@ -21,33 +21,12 @@ const handle = async (event: Event) => {
   const db = await getDatabase()
 
   try {
+    //logger.info('Event received', { event });
     isValidTransaction(event)
     await getOrCreateTables(db)
-    //logger.info('Event received', { event });
     const {payload} = event
-    const {bankAccountId,userId,type,status,value, transactionId} = payload
-    
-    
-    const table = getConcernedTable(status)
-    if (status !== 'VALIDATED') {
-      await generateNextBalance(payload,db)
-    } else {
-      await removeValidatedFromNextBalance(payload,db)
-      //await addBalance
-    }
-    
-    const currentBalance = await db.get(`SELECT balance FROM ${table} WHERE bankAccountId = ?`, bankAccountId)
-    let result
-    if (!currentBalance) {
-      logger.info(`First ${table} for account ` +  bankAccountId);
-      result = await db.run(
-        `INSERT INTO ${table} (bankAccountId, transactionId, userId, balance) VALUES (?,?,?,?)`,bankAccountId,transactionId,userId,value
-      )
-  } else {
-    logger.info(`Updating ${table} for account ` +  bankAccountId);
-    const newBalance = balanceToSet(currentBalance.balance, value, type)
-      result = await db.run(`UPDATE ${table} SET balance = ? WHERE bankAccountId = ?`,newBalance, bankAccountId)
-  }
+    await updateBalance(payload, db)
+
     return true;
   } catch (err) {
     console.log(err)
@@ -55,31 +34,15 @@ const handle = async (event: Event) => {
   }
 };
 
-const getConcernedTable = (status: String) => {
-  if (status === 'VALIDATED') return 'balances'
-  return 'nextBalances'
-}
-
-const balanceToSet = (currentBalance: number, sumToCredit: number, type: string) => (currentBalance + creditSum(type, sumToCredit))
-
-const creditSum = (type: string, sum: number):number => {
-  if (type === 'PAYOUT') return -1 * sum
-  return 1 * sum
-}
 
 const getOrCreateTables = async (db: Database) => {
   try {
     await db.exec(`CREATE TABLE IF NOT EXISTS balances (
       bankAccountId TEXT PRIMARY KEY,
-      transactionId TEXT NOT NULL,
       userId TEXT NOT NULL,
-      balance INTEGER NOT NULL)`)
-    await db.exec(`CREATE TABLE IF NOT EXISTS nextBalances (
-      bankAccountId TEXT PRIMARY KEY,
-      transactionId TEXT NOT NULL ,
-      userId TEXT NOT NULL,
-      balance INTEGER NOT NULL)`)
-      // logger.info(`Database And Tables Ready`)
+      balance INTEGER NOT NULL,
+      nextBalance INTEGER NOT NULL
+      )`)
   } catch (err) {
     logger.error(`error creating tables: ${err}`)
     throw err
@@ -88,7 +51,7 @@ const getOrCreateTables = async (db: Database) => {
 
 const isValidTransaction = (event: Event) => {
   if (event.payload.type === 'BAD_TYPE' || event.payload.status === 'BAD_STATUS') {
-    logger.warn('invalid transaction')
+    logger.warn('invalid transaction: ' + event.payload.transactionId)
     throw Error('invalid transaction')
   }
   return true
