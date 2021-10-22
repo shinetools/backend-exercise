@@ -20,9 +20,13 @@ const handle = async (event: Event) => {
   const db = await getDatabase()
 
   try {
+    isValidTransaction(event)
     await getOrCreateTables(db)
     logger.info('Event received', { event });
-    const {bankAccountId,userId,type,status, value} = event.payload
+    const {payload} = event
+    const {bankAccountId,userId,type,status,value, transactionId} = payload
+    
+    
     const table = getConcernedTable(status)
     
     const currentBalance = await db.get(`SELECT balance FROM ${table} WHERE bankAccountId = ?`, bankAccountId)
@@ -30,7 +34,7 @@ const handle = async (event: Event) => {
     if (!currentBalance) {
       logger.info(`First ${table} for account ` +  bankAccountId);
       result = await db.run(
-        `INSERT INTO ${table} (bankAccountId, userId, balance) VALUES (?,?,?)`,bankAccountId,userId,value
+        `INSERT INTO ${table} (bankAccountId, transactionId, userId, balance) VALUES (?,?,?,?)`,bankAccountId,transactionId,userId,value
       )
   } else {
     logger.info(`Updating ${table} for account ` +  bankAccountId);
@@ -39,7 +43,6 @@ const handle = async (event: Event) => {
   }
     return true;
   } catch (err) {
-    console.log(err)
     return false;
   }
 };
@@ -60,10 +63,12 @@ const getOrCreateTables = async (db: Database) => {
   try {
     await db.exec(`CREATE TABLE IF NOT EXISTS balances (
       bankAccountId TEXT PRIMARY KEY,
+      transactionId TEXT NOT NULL,
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
     await db.exec(`CREATE TABLE IF NOT EXISTS nextBalances (
       bankAccountId TEXT PRIMARY KEY,
+      transactionId TEXT NOT NULL,
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
       // logger.info(`Database And Tables Ready`)
@@ -71,7 +76,16 @@ const getOrCreateTables = async (db: Database) => {
     logger.error(`error creating tables: ${err}`)
     throw err
   }
-  
+}
+
+const isValidTransaction = (event: Event) => {
+  logger.info(event.payload.type)
+  logger.info(event.payload.status)
+  if (event.payload.type === 'BAD_TYPE' || event.payload.status === 'BAD_STATUS') {
+    logger.warn('invalid transaction')
+    throw Error('invalid transaction')
+  }
+  return true
 }
 
 export default handle;
