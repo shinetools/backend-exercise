@@ -75,8 +75,8 @@ const getOrCreateTables = async (db: Database) => {
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
     await db.exec(`CREATE TABLE IF NOT EXISTS nextBalances (
-      bankAccountId TEXT ,
-      transactionId TEXT NOT NULL PRIMARY KEY,
+      bankAccountId TEXT PRIMARY KEY,
+      transactionId TEXT NOT NULL ,
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
       // logger.info(`Database And Tables Ready`)
