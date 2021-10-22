@@ -32,7 +32,6 @@ export const updateBalance = async (transaction: Record<string,string>, db:Datab
             current: currentBalance.balance + sumToCredit,
             next
          }
-         console.log(balances)
          result = await updateBalanceRecord(transaction,balances, db)
     }
     return result
@@ -59,8 +58,7 @@ const createBalanceRecord = async (transaction: Record<string,string>,balances: 
 }
 
 const updateBalanceRecord = async (transaction: Record<string,string>,balances: Record<string,number>, db:Database) => {
-    console.log(transaction.bankAccountId)
-    console.log(balances.current, balances.next)
+    console.log(balances)
     return db.run(
         `UPDATE balances SET balance = ?, nextBalance = ? WHERE bankAccountId = ?`, transaction.bankAccountId, balances.current, balances.next
       )
