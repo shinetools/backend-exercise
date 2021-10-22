@@ -1,7 +1,7 @@
 import logger from '../utils/logger';
 import getDatabase from '../utils/database'
 import { Database } from 'sqlite';
-import { generateNextBalance } from '../balance/nextBalanceService';
+import { generateNextBalance, removeValidatedFromNextBalance } from '../balance/nextBalanceService';
 export interface Event {
   eventId: string;
   payload: any;
@@ -31,6 +31,9 @@ const handle = async (event: Event) => {
     const table = getConcernedTable(status)
     if (status !== 'VALIDATED') {
       await generateNextBalance(payload,db)
+    } else {
+      await removeValidatedFromNextBalance(payload,db)
+      //await addBalance
     }
     
     const currentBalance = await db.get(`SELECT balance FROM ${table} WHERE bankAccountId = ?`, bankAccountId)
