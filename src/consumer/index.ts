@@ -24,28 +24,22 @@ const handle = async (event: Event) => {
 
   try {
     await getOrCreateTables(db)
-    logger.info('Event received', { event });
-    const {bankAccountId,userId,type,status} = event.payload
-
-    // TODO insert your code here
-    console.log(creditSum(event))
+    // logger.info('Event received', { event });
+    const {bankAccountId,userId,type,status, value} = event.payload
     const table = getConcernedTable(status)
     
     const currentBalance = await db.get(`SELECT balance FROM ${table} WHERE bankAccountId = ?`, bankAccountId)
     let result
     if (!currentBalance) {
-      logger.info('First Balance for account ' +  bankAccountId);
-    result = await db.run(
-      `INSERT INTO ${table} (bankAccountId, userId, balance) VALUES (?,?,?)`,bankAccountId,userId,event.payload.value
-    )
+      logger.info(`First ${table} for account ` +  bankAccountId);
+      result = await db.run(
+        `INSERT INTO ${table} (bankAccountId, userId, balance) VALUES (?,?,?)`,bankAccountId,userId,event.payload.value
+      )
   } else {
-    logger.info('Updating Balance for account ' +  bankAccountId);
-    console.log(currentBalance)
-    result = await db.run(`UPDATE ${table} SET balance = ? WHERE bankAccountId = ?`,currentBalance.balance + creditSum(event), bankAccountId)
+    logger.info(`Updating ${table} for account ` +  bankAccountId);
+    const newBalance = balanceToSet(currentBalance.balance, value, type)
+      result = await db.run(`UPDATE ${table} SET balance = ? WHERE bankAccountId = ?`,newBalance, bankAccountId)
   }
-  console.log(result)
-
-
     return true;
   } catch (err) {
     console.log(err)
@@ -58,9 +52,11 @@ const getConcernedTable = (status: String) => {
   return 'nextBalances'
 }
 
-const creditSum = (event: Event):number => {
-  if (event.payload.type === 'PAYOUT') return event.payload.value * -1
-  return event.payload.value
+const balanceToSet = (currentBalance: number, sumToCredit: number, type: string) => (currentBalance + creditSum(type, sumToCredit))
+
+const creditSum = (type: string, sum: number):number => {
+  if (type === 'PAYOUT') return -1 * sum
+  return 1 * sum
 }
 
 const getOrCreateTables = async (db: Database) => {
@@ -73,9 +69,10 @@ const getOrCreateTables = async (db: Database) => {
       bankAccountId TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
-      logger.info(`Database And Tables Ready`)
+      // logger.info(`Database And Tables Ready`)
   } catch (err) {
     logger.error(`error creating tables: ${err}`)
+    throw err
   }
   
 }
