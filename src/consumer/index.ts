@@ -31,22 +31,24 @@ const handle = async (event: Event) => {
       bankAccountId TEXT PRIMARY KEY,
       userId TEXT NOT NULL,
       balance INTEGER NOT NULL)`)
-    console.log({bankAccount: bankAccountId})
     const currentBalance = await db.get('SELECT balance FROM balances WHERE bankAccountId = ?', bankAccountId)
-    console.log(currentBalance)
     let result
-    if (currentBalance) {
+    if (!currentBalance) {
+      logger.info('First Balance for account ' +  bankAccountId);
     result = await db.run(
       'INSERT INTO balances (bankAccountId, userId, balance) VALUES (?,?,?)',bankAccountId,userId,event.payload.value
     )
   } else {
+    logger.info('Updating Balance for account ' +  bankAccountId);
     console.log(currentBalance)
+    result = await db.run('UPDATE balances SET balance = ? WHERE bankAccountId = ?',currentBalance, bankAccountId)
   }
   console.log(result)
 
 
     return true;
   } catch (err) {
+    console.log(err)
     return false;
   }
 };
