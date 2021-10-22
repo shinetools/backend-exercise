@@ -1,14 +1,11 @@
 import logger from '../utils/logger';
 import getDatabase from '../utils/database'
 import { Database } from 'sqlite';
-
 interface Event {
   eventId: string;
   payload: any;
   retry: number;
 }
-
-
 
 /**
  * A handler that will receive transaction events
@@ -24,7 +21,7 @@ const handle = async (event: Event) => {
 
   try {
     await getOrCreateTables(db)
-    // logger.info('Event received', { event });
+    logger.info('Event received', { event });
     const {bankAccountId,userId,type,status, value} = event.payload
     const table = getConcernedTable(status)
     
@@ -33,7 +30,7 @@ const handle = async (event: Event) => {
     if (!currentBalance) {
       logger.info(`First ${table} for account ` +  bankAccountId);
       result = await db.run(
-        `INSERT INTO ${table} (bankAccountId, userId, balance) VALUES (?,?,?)`,bankAccountId,userId,event.payload.value
+        `INSERT INTO ${table} (bankAccountId, userId, balance) VALUES (?,?,?)`,bankAccountId,userId,value
       )
   } else {
     logger.info(`Updating ${table} for account ` +  bankAccountId);
