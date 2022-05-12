@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Shine's backend-exercise",
   "engines": {
-    "node": "14.17.4"
+    "node": "16.9.0"
   },
   "repository": {
     "type": "git",
