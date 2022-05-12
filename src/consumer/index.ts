@@ -58,17 +58,13 @@ const handle = async (event: Event): Promise<boolean> => {
   //logger.info('Event received', { event });
   try {
     const {payload} = event;
-    try{
-      await saveTransactionEvent(payload, event);
-      await computeBalancePerBankAccount(payload);
-    } catch(err) {
-      logger.error(`err save Transaction: ${JSON.stringify(err)}`);
-      await db.run('INSERT INTO ERROR (eventID, message) VALUES(?,?)', [event.eventId, JSON.stringify(err)])
-    }
-    
+    await saveTransactionEvent(payload, event);
+    await computeBalancePerBankAccount(payload);
+
     return true;
   } catch (err) {
-    logger.error(`handler err: ${err}`)
+    logger.error(`handler error: ${JSON.stringify(err)}`);
+    await db.run('INSERT INTO ERROR (eventID, message) VALUES(?,?)', [event.eventId, JSON.stringify(err)])
     if(event.retry > 4) return true;
     return false;
   }
