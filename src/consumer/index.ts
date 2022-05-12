@@ -34,29 +34,35 @@ const handle = async (event: Event) => {
     // update account/user Table and Transaction table
     //
   
-    //const temp = db.each('SELECT ID FROM USER')
     const rawEvent = JSON.stringify(event);
     db.serialize(() => {
-      const temp = db.prepare('INSERT INTO TRANSACTIONS (eventID  , category , userID , bankAccountID , currency , description , transactionCreatedAt , executedAt ,paymentMethod ,status , title , transactionAt , transactionId , type , updatedAt ,value, raw) VALUES(?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+      const insertTranactionsQuery = db.prepare('INSERT INTO TRANSACTIONS (eventID  , category , userID , bankAccountID , currency , description , transactionCreatedAt , executedAt ,paymentMethod ,status , title , transactionAt , transactionId , type , updatedAt ,value, raw) VALUES(?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
       
-      temp.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency,  payload?.description,  payload?.createdAt, payload?.executedAt, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionAt,payload?.transactionId,payload?.type,payload?.updatedAt,payload?.value, rawEvent ]);
-      temp.finalize();
+      insertTranactionsQuery.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency,  payload?.description,  payload?.createdAt, payload?.executedAt, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionAt,payload?.transactionId,payload?.type,payload?.updatedAt,payload?.value, rawEvent ]);
+      insertTranactionsQuery.finalize();
     });
 
     if( payload.status !== TransactionStatus.Pending) {
       db.serialize(() => {
-        const temp = db.prepare('INSERT INTO COMPLETED_TRANSACTION (eventID  , category , userID , bankAccountID , currency ,paymentMethod ,status , title , transactionId , type ,value) VALUES(?, ?,?,?,?,?,?,?,?,?,?)');
+        const insertCompletedTransactionQuery = db.prepare('INSERT INTO COMPLETED_TRANSACTION (eventID  , category , userID , bankAccountID , currency ,paymentMethod ,status , title , transactionId , type ,value) VALUES(?, ?,?,?,?,?,?,?,?,?,?)');
         
-        temp.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionId,payload?.type,payload?.value ]);
-        temp.finalize();
+        insertCompletedTransactionQuery.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionId,payload?.type,payload?.value ]);
+        insertCompletedTransactionQuery.finalize();
     
       });
 
       db.serialize(() => {
-        const temp = db.prepare('INSERT INTO COMPLETED_TRANSACTION (eventID  , category , userID , bankAccountID , currency ,paymentMethod ,status , title , transactionId , type ,value) VALUES(?, ?,?,?,?,?,?,?,?,?,?)');
+        const insertUserQuery = db.prepare('INSERT INTO USER (ID  , balance , bankAccountID , currency ) VALUES(?, ?,?,?)');
         
-        temp.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionId,payload?.type,payload?.value ]);
-        temp.finalize();
+        const getUserBalanceQuery = db.prepare('SELECT ID,balance FROM USER WHERE ID = ?',[payload.userId]);
+        //payload?.value
+        // get existning balance using ID 
+        // based on transaction do the right math.
+        //const balanceQueryResult = getUserBalanceQuery.run();
+
+        //const balance = 0;
+        //insertUserQuery.run([payload?.userId,balance, payload?.bankAccountId, payload?.currency ]);
+        //insertUserQuery.finalize();
     
       });
     }
