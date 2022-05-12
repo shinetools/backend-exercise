@@ -12,6 +12,10 @@ enum TransactionStatus {
   Validated ='VALIDATED'
 }
 
+enum TransactionType {
+  PayIn = 'PAYIN',
+  Payout = 'PAYOUT'
+}
 /**
  * A handler that will receive transaction events
  *
@@ -27,7 +31,7 @@ const handle = async (event: Event) => {
     logger.info('Event received', { event });
 
     const {payload, retry} = event;
-
+    const transactionAmount = payload.value / 100;
     // TODO insert your code here
         // receive event,
     // transact from bank account,
@@ -36,33 +40,44 @@ const handle = async (event: Event) => {
   
     const rawEvent = JSON.stringify(event);
     db.serialize(() => {
-      const insertTranactionsQuery = db.prepare('INSERT INTO TRANSACTIONS (eventID  , category , userID , bankAccountID , currency , description , transactionCreatedAt , executedAt ,paymentMethod ,status , title , transactionAt , transactionId , type , updatedAt ,value, raw) VALUES(?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+      const insertTranactionsQuery = db.prepare('INSERT INTO TRANSACTIONS (eventID  , category , userID , bankAccountID , currency , description , transactionCreatedAt , executedAt ,paymentMethod ,status , title , transactionAt , transactionId , type , updatedAt ,value, raw) VALUES(?, ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
       
-      insertTranactionsQuery.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency,  payload?.description,  payload?.createdAt, payload?.executedAt, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionAt,payload?.transactionId,payload?.type,payload?.updatedAt,payload?.value, rawEvent ]);
+      insertTranactionsQuery.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency,  payload?.description,  payload?.createdAt, payload?.executedAt, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionAt,payload?.transactionId,payload?.type,payload?.updatedAt,transactionAmount, rawEvent ]);
       insertTranactionsQuery.finalize();
     });
 
     if( payload.status !== TransactionStatus.Pending) {
       db.serialize(() => {
-        const insertCompletedTransactionQuery = db.prepare('INSERT INTO COMPLETED_TRANSACTION (eventID  , category , userID , bankAccountID , currency ,paymentMethod ,status , title , transactionId , type ,value) VALUES(?, ?,?,?,?,?,?,?,?,?,?)');
-        
-        insertCompletedTransactionQuery.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency, payload?.paymentMethod, payload?.status,payload?.title,payload?.transactionId,payload?.type,payload?.value ]);
+        const insertCompletedTransactionQuery = db.prepare('INSERT INTO COMPLETED_TRANSACTION (eventID  , category , userID , bankAccountID , currency ,paymentMethod ,status , transactionId , type ,value) VALUES(?, ?,?,?,?,?,?,?,?,?)');
+        insertCompletedTransactionQuery.run([event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency, payload?.paymentMethod, payload?.status,payload?.transactionId,payload?.type,transactionAmount ]);
         insertCompletedTransactionQuery.finalize();
     
       });
 
       db.serialize(() => {
         const insertUserQuery = db.prepare('INSERT INTO USER (ID  , balance , bankAccountID , currency ) VALUES(?, ?,?,?)');
-        
-        const getUserBalanceQuery = db.prepare('SELECT ID,balance FROM USER WHERE ID = ?',[payload.userId]);
-        //payload?.value
+        const updateUserBalanceQuery = db.prepare('UPDATE USER SET balance = ? WHERE ID = ?')
+        const getUserBalanceQuery = db.prepare('SELECT ID,balance FROM USER WHERE ID = ?');
         // get existning balance using ID 
         // based on transaction do the right math.
-        //const balanceQueryResult = getUserBalanceQuery.run();
 
-        //const balance = 0;
-        //insertUserQuery.run([payload?.userId,balance, payload?.bankAccountId, payload?.currency ]);
-        //insertUserQuery.finalize();
+        //payload?.value
+        let balance = 0;
+        const balanceQueryResult = getUserBalanceQuery.run([payload.userId])
+        console.log('balance: ', balanceQueryResult)
+
+        if(!balanceQueryResult){
+          balance = creditOrDebit(balance, payload.type, transactionAmount)
+          insertUserQuery.run([payload?.userId,balance, payload?.bankAccountId, payload?.currency ]);
+          insertUserQuery.finalize();
+        } else {
+          //TODO: get balance from - getUserBalanceQuery
+          balance = creditOrDebit(balance, payload.type, transactionAmount);
+
+          updateUserBalanceQuery.run([balance,payload?.userId]);
+          updateUserBalanceQuery.finalize();
+        }
+        
     
       });
     }
@@ -80,4 +95,7 @@ const handle = async (event: Event) => {
   }
 };
 
+const creditOrDebit = (balance: number, transactionType: TransactionType, amount:number) => {
+  return transactionType === TransactionType.PayIn? balance += amount :  balance-= amount;
+}
 export default handle;
