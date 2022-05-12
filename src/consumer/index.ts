@@ -48,20 +48,19 @@ interface TransactionPayload {
  * A handler that will receive transaction events
  *
  * @param {object} event - The received event from the queue
- * @param {object} event.eventId - The unique id of the event
- * @param {string} event.payload - The payload of the event
+ * @param {string} event.eventId - The unique id of the event
+ * @param {TransactionPayload} event.payload - The payload of the event
  * @param {number} event.retry - The number of retries (defaults to 0)
  * @returns {boolean} false if the event needs to be retried, else true
  */
 const handle = async (event: Event) => {
   const db = await database();
+  //logger.info('Event received', { event });
   try {
-    //logger.info('Event received', { event });
-
     const {payload} = event;
     try{
-      await saveTransaction(payload, event);
-      await computeBalance(payload);
+      await saveTransactionEvent(payload, event);
+      await computeBalancePerBankAccount(payload);
     } catch(err) {
       logger.error(`err save Transaction: ${JSON.stringify(err)}`);
 
@@ -70,54 +69,73 @@ const handle = async (event: Event) => {
     
     return true;
   } catch (err) {
-    console.log('handler err: ', err)
+    logger.error('handler err: ', err)
+    if(event.retry > 4) return true;
     return false;
   }
   
 };
 
-const computeBalance = async(payload:TransactionPayload) => {
+/**
+ * computeBalancePerBankAccount takes Event payload as param 
+ * This computes whether we debit or credit user account couloumn and also update
+ *   nextBalance
+ *
+ * @param {TransactionPayload} payload - The payload in the Event object.
+ * @returns {void} - returns void
+ */
+const computeBalancePerBankAccount = async(payload:TransactionPayload) => {
   const db = await database();
   if( payload.status === TransactionStatus.Validated) {
     // query userID balance
     const getBankIDQuery =  await db.get('SELECT ID,balance, bankAccountID FROM USER WHERE bankAccountID = ?', [payload.bankAccountId]);
     //Bank account dont exists.
     if(!getBankIDQuery){
-      const balance = creditOrDebit(0, payload.type, payload.value)
+      const balance = creditOrDebitBalance(0, payload.type, payload.value)
      await db.run('INSERT INTO USER (ID  , balance , bankAccountID , currency ) VALUES(?, ?,?,?)', 
       [payload?.userId, balance, payload.bankAccountId, payload.currency]);
 
     } else { // retrieved Bank balance donc update balance
-      const balance = creditOrDebit(getBankIDQuery?.balance as number, payload.type, payload.value )
-      await db.run('UPDATE USER SET balance = ? WHERE bankAccountID =?', 
-      [balance, payload.bankAccountId]);
+      const balance = creditOrDebitBalance(getBankIDQuery?.balance as number, payload.type, payload.value )
+      await db.run('UPDATE USER SET balance = ?, nextBalance=? WHERE bankAccountID =?', 
+      [balance, balance, payload.bankAccountId]);
     }
   } else if (payload.status === TransactionStatus.Pending) {
     // query userID balance
     const getBankIDQuery =  await db.get('SELECT ID,balance, bankAccountID FROM USER WHERE bankAccountID = ?', [payload.bankAccountId]);
     //Bank account dont exists.
     if(!getBankIDQuery){
-      const nextBalance = creditOrDebit(0, payload.type, payload.value)
+      const nextBalance = creditOrDebitBalance(0, payload.type, payload.value)
      await db.run('INSERT INTO USER (ID  , balance , bankAccountID , currency, nextBalance  ) VALUES(?, ?,?,?,?)', 
       [payload?.userId, 0, payload.bankAccountId, payload.currency, nextBalance]);
 
     } else { // retrieved Bank balance donc update balance
-      const nextBalance = creditOrDebit(getBankIDQuery?.balance as number, payload.type, payload.value )
+      const nextBalance = creditOrDebitBalance(getBankIDQuery?.balance as number, payload.type, payload.value )
       await db.run('UPDATE USER SET nextBalance = ? WHERE bankAccountID =?', 
       [nextBalance, payload.bankAccountId]);
     }
   } else if (payload.status === TransactionStatus.Canceled) {
     // query userID balance
-    const getBankIDQuery =  await db.get('SELECT ID,balance, bankAccountID FROM USER WHERE bankAccountID = ?', [payload.bankAccountId]);
+    const getBankIDQuery =  await db.get('SELECT ID,balance,nextBalance bankAccountID FROM USER WHERE bankAccountID = ?', [payload.bankAccountId]);
+
+    const nextBalance = creditOrDebitBalance(getBankIDQuery?.nextBalance as number, payload.type, payload.value , true)
     // next balance goes to zero because possible transaction was cancelled
     if(getBankIDQuery){
       await db.run('UPDATE USER SET nextBalance = ? WHERE bankAccountID =?', 
-      [0, payload.bankAccountId]);
+      [nextBalance, payload.bankAccountId]);
     } 
   }
 }
 
-const saveTransaction = async ( payload: TransactionPayload, event: Event) =>{
+/**
+ * saveTransactionEvent takes Event and payload as param. saves all transactions to DB
+ * This computes whether we debit or credit user account couloumn and also update
+ *   nextBalance
+ * @param {Event} event - The the Event object recieved by handler.
+ * @param {TransactionPayload} payload - The payload in the Event object.
+ * @returns {void} - returns void
+ */
+const saveTransactionEvent = async ( payload: TransactionPayload, event: Event) =>{
   const db = await database();
   const transactionAmount = payload?.value / 100;  
   const rawEvent = JSON.stringify(event);
@@ -127,18 +145,22 @@ const saveTransaction = async ( payload: TransactionPayload, event: Event) =>{
   if(!insertTranactionsQuery) {
     logger.error(`Error inserting Transaction Query. eventId: ${event.eventId}`)
   }
-  if( payload.status === TransactionStatus.Validated || payload.status === TransactionStatus.Canceled) {
-    const insertCompletedTransactionQuery =  await db.run('INSERT INTO COMPLETED_TRANSACTION (eventID  , category , userID , bankAccountID , currency ,paymentMethod ,status , transactionId , type ,value) VALUES(?, ?,?,?,?,?,?,?,?,?)', 
-    [event.eventId, payload?.category, payload?.userId,  payload?.bankAccountId,  payload?.currency, payload?.paymentMethod, payload?.status,payload?.transactionId,payload?.type,transactionAmount ]);
-    
-    if(!insertCompletedTransactionQuery) {
-      logger.error(`Error inserting CompletedTransaction Query. eventId: ${event.eventId}`)
-    }
-  }
-
 }
 
-const creditOrDebit = (balance: number, transactionType: TransactionType, amount:number) => {
-  return transactionType === TransactionType.PayIn? balance += amount :  balance -= amount;
+/**
+ * creditOrDebit takes Event and payload as param 
+ * This computes whether we debit or credit user account couloumn and also update
+ *   nextBalance
+ * @param {number} balance - current user balance.
+ * @param {TransactionType} transactionType - type of transaction to be computed.
+ * @param {number} transactionAmount - The amount to be transacted on the account.
+ * @param {boolean} reverseTransaction - The amount to be transacted on the account.
+ * @returns {number} - returns latest balance after creditting or debitting
+ */
+const creditOrDebitBalance = (balance: number, transactionType: TransactionType, transactionAmount:number, reverseTransaction = false): number => {
+  if(reverseTransaction){
+    return transactionType === TransactionType.PayIn? balance -= transactionAmount :  balance += transactionAmount;
+  }
+  return transactionType === TransactionType.PayIn? balance += transactionAmount :  balance -= transactionAmount;
 }
 export default handle;

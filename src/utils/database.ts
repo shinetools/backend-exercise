@@ -14,20 +14,18 @@ const getDatabase = async () => {
   });
 
 
-/*
+/* TODO: remove DROP queries
   await db.run('DROP TABLE ERROR');
   await db.run('DROP TABLE  USER  ')
-
   await db.run('DROP TABLE  TRANSACTIONS')
-
   await db.run('DROP TABLE  COMPLETED_TRANSACTION')
 */
 
+  // Create
   await userTable(db);
   await transactionTable(db);
-  await completedTransactionTable(db);
+  //await completedTransactionTable(db);
   await errorTable(db);
-
 
   return db;
 };
