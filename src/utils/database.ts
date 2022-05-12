@@ -65,6 +65,8 @@ const transactionTable = async(db:Database ) => {
 
 }
 
+
+// TODO build a class for Each Repository (SQL TABLE) which will have CRUD functions.
 const completedTransactionTable = async(db:Database ) => {
   const createCompletedTransactionTableQuery = 'CREATE TABLE IF NOT EXISTS COMPLETED_TRANSACTION ( eventID VARCHAR(100) , category VARCHAR(100), userID VARCHAR(100), bankAccountID VARCHAR(100), currency VARCHAR(10),paymentMethod VARCHAR(50),status VARCHAR(50), transactionId VARCHAR(50), type VARCHAR(50), value NUMBER, PRIMARY KEY (eventID)  );';
   await db.run(createCompletedTransactionTableQuery, (err: any) => {
