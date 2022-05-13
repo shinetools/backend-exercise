@@ -17,12 +17,12 @@ _If something is not clear, feel free to ask questions._
 
 ## Expectations
 
-The code should be production-ready.  
-We believe it's better to have quality rather than quantity.
+The code should be **production-ready**.  
+We believe it's better to have **quality rather than quantity**.
 
 ## Transaction format
 
-Transaction received are formatted as defined below
+Transaction received are formatted as defined below, all fields are mandatory.
 
 ```js
 {
@@ -48,9 +48,7 @@ Transaction received are formatted as defined below
 
 1. Store the received transaction using the SQLite database provided in `utils/database.ts`
 2. Compute the `balance` per bank account & store it.
-3. Compute `nextBalance` per bank account & store it.
 
 ### Optional goals
 
-4. Compute a `remainingPaymentCardAmount` for the bank account with a default value **10000 EUR with no limit of time**.
-   We should be able to modify the default value for a given bank account later.
+3. Compute `nextBalance` per bank account & store it.
