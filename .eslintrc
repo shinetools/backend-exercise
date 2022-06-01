@@ -1,6 +1,8 @@
 {
   "ignorePatterns": ["dist/", "coverage/", "node_modules/"],
-  "extends": ["airbnb-typescript"],
+  "extends": [
+    "airbnb-base",
+    "airbnb-typescript"],
   "parserOptions": {
     "project": "./tsconfig.json"
   },
@@ -11,5 +13,9 @@
         "extensions": [".js", ".json", ".jsx", ".ts", ".tsx"]
       }
     }
+  },
+  "rules": {
+    "react/jsx-filename-extension": "off",
+    "no-async-promise-executor": "off"
   }
 }
