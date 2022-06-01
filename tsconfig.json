@@ -9,5 +9,6 @@
     "esModuleInterop": true
   },
   "files": ["src/index.ts"],
-  "include": ["**/src/**/*.ts", "__tests__/**/*.ts"],
+  "include": ["**/src/**/*.ts"],
+  "exclude": ["__tests__/**/*.ts"]
 }
