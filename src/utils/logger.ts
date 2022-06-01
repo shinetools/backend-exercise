@@ -1,12 +1,17 @@
 import { createLogger, format, transports } from 'winston';
 
-const { combine, colorize, prettyPrint, printf, json } = format;
+const {
+  combine, colorize, printf,
+} = format;
 
 const logFormat = printf((info) => {
   const { level, message, ...rest } = info;
   const detailsKeys = Object.keys(rest);
   const details = detailsKeys.reduce(
-    (acc: Record<string, any>, key) => (acc[key] = rest[key]),
+    (acc: Record<string, any>, key) => ({
+      ...acc,
+      [key]: rest[key],
+    }),
     {},
   );
 

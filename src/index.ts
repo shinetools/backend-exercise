@@ -15,22 +15,22 @@ interface JobParams {
   retry?: number;
 }
 
-const createJob =
-  ({ payload, id, q, retry = 0 }: JobParams) =>
-  () => {
-    return new Promise<void>(async (resolve) => {
-      const eventId = id || uuid();
-      const ack = await consume({ eventId, payload, retry });
-      if (!ack) {
-        logger.debug('Adding back event to the queue for retry', {
-          payload,
-          retry,
-        });
-        q.push(createJob({ id: eventId, payload, q, retry: retry + 1 }));
-      }
-      resolve();
+const createJob = ({
+  payload, id, q, retry = 0,
+}: JobParams) => () => new Promise<void>(async (resolve) => {
+  const eventId = id || uuid();
+  const ack = await consume({ eventId, payload, retry });
+  if (!ack) {
+    logger.debug('Adding back event to the queue for retry', {
+      payload,
+      retry,
     });
-  };
+    q.push(createJob({
+      id: eventId, payload, q, retry: retry + 1,
+    }));
+  }
+  resolve();
+});
 
 const main = async () => {
   logger.info('Initializing');

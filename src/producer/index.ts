@@ -43,7 +43,7 @@ const getBankAccounts = (
   number: number = MAX_BANK_ACCOUNTS,
 ): BankAccountUserIdPair[] => {
   const bankAccounts = [];
-  for (let index = 0; index < number; index++) {
+  for (let index = 0; index < number; index += 1) {
     bankAccounts.push({ bankAccountId: chance.guid(), userId: chance.guid() });
   }
   return bankAccounts;
@@ -70,10 +70,10 @@ const generateRandomTransaction = (bankAccounts: BankAccountUserIdPair[]) => {
     currency: 'EUR',
     description: chance.sentence({ words: 10 }),
     executedAt:
-      transactionStatus === 'VALIDATED' || 'CANCELED'
+      ['VALIDATED', 'CANCELED'].includes(transactionStatus)
         ? new Date(
-            transactionAt + chance.integer({ min: 0, max: 10000 }),
-          ).toISOString()
+          transactionAt + chance.integer({ min: 0, max: 10000 }),
+        ).toISOString()
         : null,
     paymentMethod: chance.pickone(PAYMENT_METHODS),
     status: transactionStatus,
@@ -100,27 +100,28 @@ const messWithOlderTransaction = (eventsSent: any) => {
         ...event,
         status: chance.weighted(['VALIDATED', 'CANCELED'], [80, 20]),
         executedAt: new Date(
-          new Date(transactionAt).getTime() +
-            chance.integer({ min: ONE_MINUTE_IN_MS, max: TWELVE_HOURS_IN_MS }),
+          new Date(transactionAt).getTime()
+            + chance.integer({ min: ONE_MINUTE_IN_MS, max: TWELVE_HOURS_IN_MS }),
         ),
       };
 
     case 'VALIDATED':
-    case 'CANCELED':
+    case 'CANCELED': {
       const random = Math.random();
       if (random < 0.4) {
         return {
           ...event,
           status: 'PENDING',
           updatedAt: new Date(
-            new Date(updatedAt).getTime() -
-              chance.integer({
-                min: ONE_MINUTE_IN_MS,
-                max: 5 * ONE_MINUTE_IN_MS,
-              }),
+            new Date(updatedAt).getTime()
+            - chance.integer({
+              min: ONE_MINUTE_IN_MS,
+              max: 5 * ONE_MINUTE_IN_MS,
+            }),
           ),
         };
       }
+    }
       return event;
     default:
       return event;
