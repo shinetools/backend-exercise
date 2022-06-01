@@ -121,8 +121,9 @@ const messWithOlderTransaction = (eventsSent: any) => {
           ),
         };
       }
-    }
       return event;
+    }
+
     default:
       return event;
   }
