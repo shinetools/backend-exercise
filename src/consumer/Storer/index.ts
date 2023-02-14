@@ -28,6 +28,11 @@ class Storer {
         return typeof this.database !== 'undefined';
     }
 
+    public async getAllTransactionsId() {
+        const result = await this.database!.get('SHOW tables');
+        console.log(result);
+    }
+
     public async storeTransaction(transaction: Transaction) {
         logger.debug(`[Storer:${this._id}] new transaction request`, transaction);
         if (!this.isInitialized) {
