@@ -59,13 +59,13 @@ class Storer {
         // check db is initialized before even trying to validate a transaction
         if (!this.isInitialized) {
             logger.error(`[Storer:${this._id}] transaction request cannot be done because the Storer is not initialized yet.`);
-            return false;
+            throw new Error(`[Storer:${this._id}] transaction request cannot be done because the Storer is not initialized yet.`);
         }
         // validate transaction before storing it
         const validationResult: ValidationResult = this.validateTransaction(transaction);
         if (validationResult.ok === false) {
             logger.error(`[Storer:${this._id}] new transaction (id: ${transaction.transactionId}) has validation errors`, validationResult);
-            return false;
+            throw new Error(`[Storer:${this._id}] transaction request cannot be done because the Storer is not initialized yet.`);
         }
         // if valid, proceed by storing in sqlite the transaction
         const result = await this.database!.run(transactionInsertQuery, {
@@ -85,6 +85,7 @@ class Storer {
             ":updatedAt": transaction.updatedAt,
             ":value": transaction.value // integer, e.g. 5000 equals to 50.00€
         });
+        // if insert query files, an Error is thrown by SQLITE, no need to add a custom handler.
         logger.debug(`[Storer:${this._id}] new transaction (id: ${transaction.transactionId}) stored`, transaction);
         logger.info(`[Storer:${this._id}] new transaction (id: ${transaction.transactionId}) stored.`);
         return result;
