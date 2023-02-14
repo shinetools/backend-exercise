@@ -1,0 +1,7 @@
+{
+  "extends": "../../../tsconfig.json",
+  "include": [
+    "./Storer/__tests__/index.ts", "./Accounter/__tests__/index.ts",  "./__tests__/index.ts"
+  ],
+  "exclude": ["./Storer/__tests__/mocks.js"]
+}

@@ -23,7 +23,7 @@ const logFormat = printf((info) => {
 });
 
 const logger = createLogger({
-  level: 'debug',
+  level: 'info',
   transports: [
     new transports.Console({
       format: combine(colorize(), logFormat),

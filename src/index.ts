@@ -49,3 +49,11 @@ const main = async () => {
 if (require.main === module) {
   main();
 }
+
+// Error handling 2
+// 2. Operational errors: errors thrown by NodeJs
+// 2A. if Event object is malformed (no payload for instance)
+// 2B. Infrastructure (failed to connect to server, request timeout, 500 response, system is out of memory, etc)
+process.on('uncaughtExceptionMonitor', (err, origin) => {
+  logger.error(`[backend-exercise] uncaughtExceptionMonitor detected an event`, err, origin);
+});
