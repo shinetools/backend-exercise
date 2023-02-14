@@ -88,6 +88,6 @@ describe('Storer', () => {
 
 // cet aprem
 // 1. finire store: check
-// 2. validare dati
+// 2. validare dati: check
 // 3. brancher agli eventi
 // 4. in caso di indisponibilita

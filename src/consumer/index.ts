@@ -1,4 +1,5 @@
 import logger from '../utils/logger';
+import Storer from './Storer';
 
 interface Event {
   eventId: string;
@@ -20,6 +21,10 @@ const handle = async (event: Event) => {
     logger.info('Event received', { event });
 
     // TODO insert your code here
+    const testStorer = new Storer();
+    await testStorer.initialize();
+    const { payload: eventTransaction } = event;
+    await testStorer.storeTransaction(eventTransaction);
 
     return true;
   } catch (err) {

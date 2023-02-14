@@ -103,6 +103,12 @@ class Storer {
                 message: `transaction.value cannot be zero`
             };
         }
+        if (transaction.currency !== "EUR") {
+            return { 
+                ok: false,
+                message: `transaction.currency must be EUR`
+            };
+        }
         return {
             ok: true,
             value: transaction
