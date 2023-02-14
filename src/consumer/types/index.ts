@@ -57,3 +57,11 @@ export interface Transaction {
     "updatedAt": string, // "1970-01-04T10:52:27.281Z",
     "value": number, // 5000 // integer, e.g. 5000 equals to 50.00€
 };
+
+export type Validation<T> = { ok: true, value: T } | { ok: false, message: string };
+
+export interface ValidationResult {
+    ok: boolean,
+    value?: Transaction,
+    message?: string,
+};

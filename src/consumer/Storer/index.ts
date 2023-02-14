@@ -2,10 +2,12 @@ import logger from '../../utils/logger';
 import { v4 } from 'uuid';
 import getDatabase from '../../utils/database';
 import { Database } from 'sqlite';
-import { Transaction } from '../types';
+import { Transaction, Validation, ValidationResult } from '../types';
+import { transactionInsertQuery } from './utils';
 
 class Storer {
     private _id: string;
+    private _initalized: boolean = false;
     private database?: Database;
 
     constructor() {
@@ -16,33 +18,95 @@ class Storer {
     public async initialize() {
         this.database = await getDatabase();
         logger.debug(`[Storer:${this._id}] initialized.`, this.database);
-        // ?? persistance de la table "transactions" -- one time
+        const result = await this.database!.run(`
+            CREATE TABLE IF NOT EXISTS transactions (
+                transactionId TEXT PRIMARY KEY,
+                bankAccountId TEXT NOT NULL,
+                category TEXT NOT NULL,
+                userId TEXT NOT NULL,
+                createdAt TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                description TEXT NOT NULL,
+                executedAt TEXT NOT NULL,
+                paymentMethod TEXT NOT NULL,
+                status TEXT NOT NULL,
+                title TEXT NOT NULL,
+                transactionAt TEXT NOT NULL,
+                type TEXT NOT NULL,
+                updatedAt TEXT NOT NULL,
+                value TEXT NOT NULL
+            ) WITHOUT ROWID;
+        `);
+        this._initalized = true;
         logger.info(`[Storer:${this._id}] initialized with status: ${this.isInitialized === true ? 'successful' : 'failed'}.`);
     }
 
-    public get id() {
+    public get id() : string {
         return this._id;
     }
 
-    public get isInitialized() {
-        return typeof this.database !== 'undefined';
+    public get isInitialized() : boolean {
+        return this._initalized;
     }
 
-    public async getAllTransactionsId() {
-        const result = await this.database!.get('SHOW tables');
-        console.log(result);
+    public async getTransactionById(transactionId: string) {
+        const result = await this.database!.get('SELECT * FROM transactions WHERE transactionId = ?', transactionId);
+        return result;
     }
 
     public async storeTransaction(transaction: Transaction) {
         logger.debug(`[Storer:${this._id}] new transaction request`, transaction);
+        // check db is initialized before even trying to validate a transaction
         if (!this.isInitialized) {
             logger.error(`[Storer:${this._id}] transaction request cannot be done because the Storer is not initialized yet.`);
             return false;
         }
-        // const result = await this.database!.run(
-        //     'INSERT INTO transactions (col) VALUES (?)',
-        //     '...'
-        // );
+        // validate transaction before storing it
+        const validationResult: ValidationResult = this.validateTransaction(transaction);
+        if (validationResult.ok === false) {
+            logger.error(`[Storer:${this._id}] new transaction (id: ${transaction.transactionId}) has validation errors`, validationResult);
+            return false;
+        }
+        // if valid, proceed by storing in sqlite the transaction
+        const result = await this.database!.run(transactionInsertQuery, {
+            ":transactionId": transaction.transactionId,
+            ":bankAccountId": transaction.bankAccountId,
+            ":category": transaction.category,
+            ":userId": transaction.userId,
+            ":createdAt": transaction.createdAt,
+            ":currency": transaction.currency, // will always be `EUR`
+            ":description": transaction.description,
+            ":executedAt": transaction.executedAt,
+            ":paymentMethod": transaction.paymentMethod, // could be one of CARD, CHECK, DIRECT_DEBIT or TRANSFER
+            ":status": transaction.status, // could be one of PENDING, CANCELED, VALIDATED
+            ":title": transaction.title,
+            ":transactionAt": transaction.transactionAt,
+            ":type": transaction.type, // PAYIN for incoming transaction or PAYOUT for outgoing transaction
+            ":updatedAt": transaction.updatedAt,
+            ":value": transaction.value // integer, e.g. 5000 equals to 50.00€
+        });
+        logger.debug(`[Storer:${this._id}] new transaction (id: ${transaction.transactionId}) stored`, transaction);
+        logger.info(`[Storer:${this._id}] new transaction (id: ${transaction.transactionId}) stored.`);
+        return result;
+    }
+
+    public validateTransaction(transaction: any) : Validation<Transaction> {
+        logger.debug(`[Storer:${this._id}] validating transaction`, transaction);
+        if (typeof transaction.value !== "number") {
+            return {
+                ok: false,
+                message: `transaction.value must be of type number but was ${typeof transaction.value}`
+            };
+        } else if (transaction.value === 0) {
+            return { 
+                ok: false,
+                message: `transaction.value cannot be zero`
+            };
+        }
+        return {
+            ok: true,
+            value: transaction
+        };
     }
 }
 
