@@ -91,6 +91,8 @@ class Storer {
     }
 
     public validateTransaction(transaction: any) : Validation<Transaction> {
+        // @TBD: validator as a single reusable component / shareable nodemodule
+        // @TBD: validator based on typescript and decorators as for typestack/class-validator
         logger.debug(`[Storer:${this._id}] validating transaction`, transaction);
         if (typeof transaction.value !== "number") {
             return {
