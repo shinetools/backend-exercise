@@ -9,9 +9,7 @@ _Shine is providing banking services, our users can perform various types of tra
 This exercise is using an event-driven approach following a producer-consumer pattern.
 
 We are providing the producer, you will be implementing the **consumer**, located in `src/consumer/index.ts`.  
-The goal is to process received events and react according to the business logic.
-
-The producer may send erroneous payload, just like it could happen in a real world environment.
+The goal is to process received events. The producer may send erroneous payload, just like it could happen in a real world environment.
 
 _If something is not clear, feel free to ask questions._
 
@@ -46,9 +44,5 @@ Transaction received are formatted as defined below, all fields are mandatory.
 
 ## Goals
 
-1. Store the received transaction using the SQLite database provided in `utils/database.ts`
-2. Compute the `balance` per bank account & store it.
-
-### Optional goals
-
-3. Compute `nextBalance` per bank account & store it.
+1. Store the received transactions using the SQLite database provided in `utils/database.ts`
+2. Implement a solution where the producer is a third party and the consumer needs to check the authenticity of events received. For this part, changes can be made to the event producer.
