@@ -4,7 +4,8 @@ _This repository provides a basic configuration, feel free to adjust it if neede
 
 ## Purpose
 
-_Shine is providing banking services, our users can perform various types of transactions, that's what we will focus on today._
+_Shine is providing banking services, our users can perform various types of transactions, that's what we will focus on today.  
+For the sake of this exercise we will assume that a user can only have one bank account._
 
 This exercise is using an event-driven approach following a producer-consumer pattern.
 
@@ -48,7 +49,3 @@ Transaction received are formatted as defined below, all fields are mandatory.
 
 1. Store the received transaction using the SQLite database provided in `utils/database.ts`
 2. Compute the `balance` per bank account & store it.
-
-### Optional goals
-
-3. Compute `nextBalance` per bank account & store it.
